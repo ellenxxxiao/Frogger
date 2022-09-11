@@ -1,9 +1,26 @@
 <html>
-  <head>
-    <title>FIT2102 A1 2022</title>
-  </head>
-  <body>
-    <h1>Frogger</h1>
-    <svg id="svgCanvas" width="600" height="600"></svg>
-  </body>
+
+<head>
+  <title>FIT2102 A1 2022</title>
+  <style>
+    .frog {
+      fill: green;
+    }
+
+    .car {
+      fill: red;
+    }
+  </style>
+  <script src="../dist/main.js">
+  </script>
+</head>
+
+<body>
+  <svg id="svgCanvas" width="550" height="750" style="background-color:pink">
+    <g id="frog" transform="translate(250, 700)">
+      <rect class="frog" width="50" height="50" />
+    </g>
+  </svg>
+</body>
+
 </html>
