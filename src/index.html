@@ -3,6 +3,18 @@
 <head>
   <title>FIT2102 A1 2022</title>
   <style>
+    .road {
+      fill: burlywood;
+    }
+
+    .water {
+      fill: lightblue;
+    }
+
+    .grass {
+      fill: plum;
+    }
+
     .frog {
       fill: green;
     }
@@ -10,16 +22,28 @@
     .car {
       fill: red;
     }
+
+    .truck {
+      fill: purple
+    }
+
+    .log {
+      fill: rgb(112, 81, 24);
+    }
+
+    .goal {
+      fill: yellow;
+    }
   </style>
   <script src="../dist/main.js">
   </script>
 </head>
 
 <body>
-  <svg id="svgCanvas" width="550" height="750" style="background-color:pink">
-    <g id="frog" transform="translate(250, 700)">
-      <rect class="frog" width="50" height="50" />
-    </g>
+  <svg id="svgCanvas" width="550" height="750" style="background-color: #555555">
+    <!--Game Score-->
+    <text x=35 y=35 fill="white" class="gameText">SCORE</text>
+    <text id="score" x=150 y=35 fill="lime" , class="gameNumber">0</text>
   </svg>
 </body>
 
