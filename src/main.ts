@@ -1,11 +1,10 @@
-import "./style.css";
 import { fromEvent, interval, merge } from "rxjs";
 import { map, filter, scan } from "rxjs/operators";
 
 type Key = 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight';
 type Event = 'keydown' | 'keyup';
 
-function main() {
+function frogger() {
 
   const Constants = {
     CANVAS_HEIGHT: 750,
@@ -430,7 +429,7 @@ function main() {
         canvas.removeChild(document.getElementById("game-over")!);
         canvas.removeChild(document.getElementById("retry")!);
         s.flies.forEach(f => canvas.removeChild(document.getElementById(f.id)!));
-        main();
+        frogger();
       }
 
     }
@@ -492,6 +491,6 @@ function isNotNullOrUndefined<T extends Object>(input: null | undefined | T): in
 // The following simply runs your main function on window load.  Make sure to leave it in place.
 if (typeof window !== "undefined") {
   window.onload = () => {
-    main();
+    frogger();
   };
 }
