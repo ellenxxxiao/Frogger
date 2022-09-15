@@ -10,9 +10,13 @@ function main() {
   const Constants = {
     CANVAS_HEIGHT: 750,
     CANVAS_WIDTH: 550,
+    MOVABLE_RANGE: { left: 0, right: 500, top: 50, bottom: 650 },
     GRID_SIZE: 50,
     FLIES_LIMIT: 2,
     START_TIME: 0,
+    // FROG_START_POSITION: new Vec(250, 650),
+    FROG_START_POSITION: new Vec(250, 350),
+    TOLERANCE: 20
   } as const
 
   // our game has the following view element types
@@ -39,23 +43,36 @@ function main() {
 
   type Rect = Readonly<{ position: Vec, size: Vec }>
   type ObjectId = Readonly<{ id: string, createTime: number }>
-  // Object state
+
+  // state for object
   interface IObject extends Rect, ObjectId {
-    viewType: ViewType,
+    viewType: ViewType
   }
 
-  interface IMovingObject extends IObject {
+  // state for object that can move
+  interface IMovableObject extends IObject {
     velocity: Vec,
     direction: number  // -1 = left, 1 = right
   }
 
+  // state for object that can be visited
   interface ITarget extends IObject {
     visited: boolean
   }
 
+  // state for text object
+  interface IText {
+    id: string,
+    text: string,
+    size: number,
+    position: Vec,
+    color: string
+  }
+
   type Object = Readonly<IObject>
-  type MovingObject = Readonly<IMovingObject>
-  type TargetObject = Readonly<ITarget>
+  type MovableObject = Readonly<IMovableObject>
+  type TargetObject = ITarget // not readonly because 'visited' can be updated
+  type TextObject = Readonly<IText>
 
 
   // Game state
@@ -65,11 +82,12 @@ function main() {
     water: Object,
     grass: ReadonlyArray<Object>,
     goals: ReadonlyArray<TargetObject>,
-    frog: MovingObject,
-    vehicles: ReadonlyArray<MovingObject>,
-    logs: ReadonlyArray<MovingObject>,
-    flies: ReadonlyArray<MovingObject>,
-    exit: ReadonlyArray<MovingObject>,
+    frog: MovableObject,
+    vehicles: ReadonlyArray<MovableObject>,
+    logs: ReadonlyArray<MovableObject>,
+    flies: ReadonlyArray<MovableObject>,
+    exit: ReadonlyArray<MovableObject>,
+    texts: ReadonlyArray<TextObject>,
     score: number,
     gameOver: boolean
   }>
@@ -84,7 +102,7 @@ function main() {
     }
 
   const createMovingObject = (viewType: ViewType) => (size: Vec) => (oid: ObjectId) => (pos: Vec) => (vel: Vec) => (dir: number) => (
-    <MovingObject>{
+    <MovableObject>{
       ...createObject(viewType)(size)(oid)(pos),
       velocity: vel,
       direction: dir
@@ -98,35 +116,55 @@ function main() {
     }
   )
 
+  const createTextObject = (id: string) => (text: string) => (size: number) => (pos: Vec) => (color: string) => (
+    <TextObject>{
+      id: id,
+      text: text,
+      size: size,
+      position: pos,
+      color: color
+    }
+  )
+
   const
     defaultOid = { id: '0', createTime: Constants.START_TIME },
     createGrass = (id: string) => createObject('grass')(new Vec(Constants.CANVAS_WIDTH, Constants.GRID_SIZE))({ id: id, createTime: Constants.START_TIME }),
     createRoad = createObject('road')(new Vec(Constants.CANVAS_WIDTH, 5 * Constants.GRID_SIZE))(defaultOid)(new Vec(0, 400)),
     createWater = createObject('water')(new Vec(Constants.CANVAS_WIDTH, 5 * Constants.GRID_SIZE))(defaultOid)(new Vec(0, 100)),
-    // createFrog = createMovingObject('frog')(new Vec(Constants.GRID_SIZE, Constants.GRID_SIZE))(defaultOid)(new Vec((Constants.CANVAS_WIDTH - Constants.GRID_SIZE) / 2, Constants.CANVAS_HEIGHT - 2 * Constants.GRID_SIZE))(Vec.Zero)(1),
-    createFrog = createMovingObject('frog')(new Vec(Constants.GRID_SIZE, Constants.GRID_SIZE))(defaultOid)(new Vec(250, 350))(Vec.Zero)(1),
+    createFrog = createMovingObject('frog')(new Vec(Constants.GRID_SIZE, Constants.GRID_SIZE))(defaultOid)(Constants.FROG_START_POSITION)(Vec.Zero)(1),
+    // createFrog = createMovingObject('frog')(new Vec(Constants.GRID_SIZE, Constants.GRID_SIZE))(defaultOid)(new Vec(250, 350))(Vec.Zero)(1),
     createCar = createMovingObject('car')(new Vec(Constants.GRID_SIZE, Constants.GRID_SIZE)),
     createTruck = createMovingObject('truck')(new Vec(2 * Constants.GRID_SIZE, Constants.GRID_SIZE)),
     createLog = (len: number) => createMovingObject('log')(new Vec(len * Constants.GRID_SIZE, Constants.GRID_SIZE)),
     createFly = createMovingObject('fly')(new Vec(Constants.GRID_SIZE / 5, Constants.GRID_SIZE / 5)),
     createGoal = (id: string) => createTargetObject('goal')(new Vec(Constants.GRID_SIZE, Constants.GRID_SIZE))({ id: id, createTime: Constants.START_TIME })
 
-  function createRandomFlies(time: number): ReadonlyArray<MovingObject> {
+  function createRandomFlies(time: number): ReadonlyArray<MovableObject> {
     const fly = createFly
       ({ id: String(time), createTime: time })
       (new Vec(Math.random() * Constants.CANVAS_WIDTH, Math.random() * (Constants.CANVAS_HEIGHT - 100)))
       (new Vec(Math.random(), Math.random()))
       (Math.random() > 0.5 ? 1 : -1)
-    return [fly] as ReadonlyArray<MovingObject>
+    return [fly] as ReadonlyArray<MovableObject>
   }
 
   const
+    gameOverTexts = [
+      createTextObject('game-over')('GAME OVER')(100)(new Vec(50, 400))('blue'),
+      createTextObject('retry')('CLICK TO RETRY :)')(30)(new Vec(160, 450))('blue')
+    ] as ReadonlyArray<TextObject>,
+
+    nextLevelTexts = [
+      createTextObject('lvl-complete')('LEVEL COMPLETE')(70)(new Vec(25, 400))('blue'),
+      createTextObject('next')('NEXT LEVEL IN ...')(30)(new Vec(160, 450))('blue')
+    ] as ReadonlyArray<TextObject>,
+
     initialGoals = [
       createGoal('1')(new Vec(Constants.GRID_SIZE, Constants.GRID_SIZE))(false),
-      createGoal('2')(new Vec(3 * Constants.GRID_SIZE, Constants.GRID_SIZE))(false),
-      createGoal('3')(new Vec(5 * Constants.GRID_SIZE, Constants.GRID_SIZE))(false),
-      createGoal('4')(new Vec(7 * Constants.GRID_SIZE, Constants.GRID_SIZE))(false),
-      createGoal('5')(new Vec(9 * Constants.GRID_SIZE, Constants.GRID_SIZE))(false),
+      // createGoal('2')(new Vec(3 * Constants.GRID_SIZE, Constants.GRID_SIZE))(false),
+      // createGoal('3')(new Vec(5 * Constants.GRID_SIZE, Constants.GRID_SIZE))(false),
+      // createGoal('4')(new Vec(7 * Constants.GRID_SIZE, Constants.GRID_SIZE))(false),
+      // createGoal('5')(new Vec(9 * Constants.GRID_SIZE, Constants.GRID_SIZE))(false),
     ] as ReadonlyArray<TargetObject>,
 
 
@@ -138,21 +176,21 @@ function main() {
 
     // crate initial vehicles
     initialVehicles = [
-      createCar({ id: '1', createTime: Constants.START_TIME })(new Vec(Constants.CANVAS_WIDTH, 400))(new Vec(5, 0))(-1),
+      createCar({ id: '1', createTime: Constants.START_TIME })(new Vec(Constants.CANVAS_WIDTH, 400))(new Vec(3, 0))(-1),
       createCar({ id: '2', createTime: Constants.START_TIME })(new Vec(Constants.CANVAS_WIDTH, 450))(new Vec(2, 0))(-1),
       createCar({ id: '3', createTime: Constants.START_TIME })(new Vec(Constants.CANVAS_WIDTH, 600))(new Vec(1, 0))(1),
 
       createTruck({ id: '1', createTime: Constants.START_TIME })(new Vec(Constants.CANVAS_WIDTH, 500))(new Vec(1, 0))(1),
       createTruck({ id: '2', createTime: Constants.START_TIME })(new Vec(Constants.CANVAS_WIDTH + 3 * Constants.GRID_SIZE, 600))(new Vec(1, 0))(1)
-    ] as ReadonlyArray<MovingObject>,
+    ] as ReadonlyArray<MovableObject>,
 
     initialLogs = [
       createLog(3)({ id: '1', createTime: Constants.START_TIME })(new Vec(Constants.CANVAS_WIDTH + 200, 300))(new Vec(2, 0))(1),
       createLog(4)({ id: '2', createTime: Constants.START_TIME })(new Vec(Constants.CANVAS_WIDTH + 50, 250))(new Vec(0.5, 0))(-1),
       createLog(3)({ id: '3', createTime: Constants.START_TIME })(new Vec(Constants.CANVAS_WIDTH + 200, 200))(new Vec(1, 0))(1),
       createLog(4)({ id: '4', createTime: Constants.START_TIME })(new Vec(Constants.CANVAS_WIDTH + 50, 150))(new Vec(1.1, 0))(1),
-      createLog(3)({ id: '5', createTime: Constants.START_TIME })(new Vec(Constants.CANVAS_WIDTH + 200, 100))(new Vec(0.5, 0))(-1),
-    ] as ReadonlyArray<MovingObject>,
+      createLog(6)({ id: '5', createTime: Constants.START_TIME })(new Vec(Constants.CANVAS_WIDTH + 200, 100))(new Vec(0.5, 0))(-1)
+    ] as ReadonlyArray<MovableObject>,
 
 
     initialState: GameState = {
@@ -166,76 +204,99 @@ function main() {
       logs: initialLogs,
       flies: [],
       exit: [],
+      texts: [],
       score: 0,
       gameOver: false
     },
 
     // wrap positions around horizontally
     torusWrap = (pos: Vec, size: Vec) => {
-      const width = Constants.CANVAS_WIDTH
       function wrap(x: number) {
-        if (x < -size.x) return x + width + size.x
-        if (x > width) return x - width - size.x
+        if (x < -size.x) return x + Constants.CANVAS_WIDTH + size.x
+        if (x > Constants.CANVAS_WIDTH) return x - Constants.CANVAS_WIDTH - size.x
         return x
       }
       return new Vec(wrap(pos.x), pos.y)
     },
 
 
-    moveObject = (o: MovingObject) => <MovingObject>{
+    moveObject = (o: MovableObject) => <MovableObject>{
       ...o,
       position: torusWrap(o.position.add(o.velocity.mult(o.direction)), o.size)
     },
 
-    bodiesOverlapped = ([frog, log]: [Object, Object]) => {
-      const xOverlapped = frog.position.x + frog.size.x / 2 > log.position.x && frog.position.x + frog.size.x <= log.position.x + log.size.x
-      const yOverlapped = frog.position.y + frog.size.y / 2 > log.position.y && frog.position.y + frog.size.y <= log.position.y + log.size.y
+    // frog is considered on object if more than half of it is on the object
+    objectsOverlapped = (objA: Object, objB: Object) => {
+      const xOverlapped = objA.position.x + objA.size.x / 2 > objB.position.x && objA.position.x + objA.size.x / 2 <= objB.position.x + objB.size.x
+      const yOverlapped = objA.position.y + objA.size.y / 2 > objB.position.y && objA.position.y + objA.size.y <= objB.position.y + objB.size.y
       return xOverlapped && yOverlapped
     },
 
-    bodiesCollided = ([frog, obj]: [Object, Object]) => {
-      return frog.position.x + frog.size.x > obj.position.x && frog.position.x < obj.position.x + obj.size.x &&
-        frog.position.y + frog.size.y > obj.position.y && frog.position.y < obj.position.y + obj.size.y
+    objectsCollided = (objA: Object, objB: Object) => {
+      return objA.position.x + objA.size.x > objB.position.x && objA.position.x < objB.position.x + objB.size.x &&
+        objA.position.y + objA.size.y > objB.position.y && objA.position.y < objB.position.y + objB.size.y
     },
 
 
 
     handleCollisions = (s: GameState) => {
       const
-        cut = except((a: MovingObject) => (b: MovingObject) => a.id === b.id),
+        cut = except((a: MovableObject) => (b: MovableObject) => a.id === b.id),
         halfFrogSize = s.frog.size.x / 2,
         // if more than half of the frog falls outside the canvas, it's dead
         frogOffCanvas = s.frog.position.x < -halfFrogSize || s.frog.position.x > Constants.CANVAS_WIDTH - halfFrogSize,
-        frogCollided = s.vehicles.filter(r => bodiesCollided([s.frog, r])).length > 0,
+        frogCollided = s.vehicles.filter(r => objectsCollided(s.frog, r)).length > 0,
         frogInWater = s.frog.position.y < s.water.position.y + s.water.size.y && s.frog.position.y + s.frog.size.x > s.water.position.y,
-        frogOnLog = s.logs.filter(r => bodiesOverlapped([s.frog, r])).length > 0,
-        logFrogIsOn = s.logs.filter(r => bodiesOverlapped([s.frog, r]))[0],
-        fliesCollided = s.flies.filter(r => bodiesCollided([s.frog, r])),
+        frogOnLog = s.logs.filter(r => objectsOverlapped(s.frog, r)).length > 0,
+        logFrogIsOn = s.logs.filter(r => objectsOverlapped(s.frog, r))[0],
+        fliesCollided = s.flies.filter(r => objectsCollided(s.frog, r)),
 
-        frogOnGoal = s.goals.filter(r => bodiesOverlapped([s.frog, r])).length > 0,
-        score = s.score + fliesCollided.length * 10 + (frogOnGoal ? 100 : 0)
+        frogOnGoal = s.goals.filter(r => r.visited !== true).filter(r => objectsOverlapped(s.frog, r)).length > 0,
+        goalVisited = s.goals.filter(r => objectsOverlapped(s.frog, r))[0],
+        score = s.score + fliesCollided.length * 10 + (frogOnGoal ? 100 : 0),
+        gameOver = frogOffCanvas || frogCollided
+      // gameOver = false;
+
+      if (frogOnGoal) {
+
+        // THIS WORKS
+        for (let i = 0; i < s.goals.length; i++) {
+          if (goalVisited.id === s.goals[i].id) {
+            s.goals[i].visited = true
+          }
+        }
+
+
+        // // BELOW DOESNT WORK, does not change the 'visited' attribute for the goal
+        // s.goals.map(g => g.id === goalVisited.id ? { ...g, visited: true } : { ...g })
+
+      }
+
+      const levelFinished = s.goals.filter(g => g.visited === true).length === s.goals.length
 
       return <GameState>{
         ...s,
         frog: {
           ...s.frog,
           velocity: frogOnLog ? logFrogIsOn.velocity.mult(logFrogIsOn.direction) : Vec.Zero,
-          direction: frogOnLog ? logFrogIsOn.direction : s.frog.direction,
-          position: frogOnGoal ? new Vec(Constants.CANVAS_WIDTH / 2, Constants.CANVAS_HEIGHT - 100) : s.frog.position
+          position: frogOnGoal ? Constants.FROG_START_POSITION : s.frog.position
         },
         flies: cut(s.flies)(fliesCollided),
         exit: s.exit.concat(fliesCollided),
+        // goal: frogOnGoal ? s.goals.map(g => g.id === goalVisited.id ? { ...g, visited: true } : { ...g }) : s.goals,
+        texts: levelFinished ? s.texts.concat(nextLevelTexts) : s.texts.concat(gameOver ? s.texts.concat(gameOverTexts) : s.texts),
         score: score,
-        gameOver: frogOffCanvas || frogCollided || (frogInWater && !frogOnLog)
+        gameOver: gameOver
       }
     },
 
     tick = (s: GameState, elapsed: number) => {
       const
         expired = (o: Object) => (elapsed - o.createTime) > 500 || o.position.y + o.size.y > Constants.CANVAS_HEIGHT - 50 || o.position.y <= 100,
-        expiredFlies: ReadonlyArray<MovingObject> = s.flies.filter(expired),
+        expiredFlies: ReadonlyArray<MovableObject> = s.flies.filter(expired),
         activeFlies = s.flies.filter(o => !expired(o)),
         newFlies = activeFlies.length < Constants.FLIES_LIMIT && Math.random() < 0.005 ? activeFlies.concat(createRandomFlies(elapsed)) : activeFlies
+
       return handleCollisions({
         ...s,
         time: s.time + elapsed,
@@ -243,28 +304,42 @@ function main() {
         vehicles: s.vehicles.map(moveObject),
         logs: s.logs.map(moveObject),
         exit: expiredFlies,
-        flies: newFlies.map(moveObject)
-
-        // flies: s.flies.filter(f => !expired(f)).map(moveObject)
+        flies: newFlies.map(moveObject),
       })
     },
 
-    // if movement left is not enough for a full grid, move frog to the edge of the canvas
-    checkBounds = (o: MovingObject, e: Move): Vec => {
-      if (o.position.x + e.movement.x < 0) {
-        return new Vec(0, o.position.y)
+
+    /***
+     * Check the bounds for moving objects
+     */
+    checkBounds = (s: GameState, o: MovableObject, e: Move): Vec => {
+      const
+        newPos = o.position.add(e.movement),
+        unvisitedGoals = s.goals.filter(g => g.visited === false),
+        unvisitedGoalsPositions = unvisitedGoals.map(g => g.position)
+
+      // if movement left is not enough for a full grid, move frog to the edge of the canvas
+      if (newPos.x < Constants.MOVABLE_RANGE.left) {
+        return new Vec(Constants.MOVABLE_RANGE.left, o.position.y)
       }
-      if (o.position.x + e.movement.x > Constants.CANVAS_WIDTH - Constants.GRID_SIZE) {
-        return new Vec(Constants.CANVAS_WIDTH - Constants.GRID_SIZE, o.position.y)
+      if (newPos.x > Constants.MOVABLE_RANGE.right) {
+        return new Vec(Constants.MOVABLE_RANGE.right, o.position.y)
       }
-      if (o.position.y + e.movement.y < Constants.GRID_SIZE) {
-        return new Vec(o.position.x, Constants.GRID_SIZE)
+      if (newPos.y < Constants.MOVABLE_RANGE.top) {
+        return new Vec(o.position.x, Constants.MOVABLE_RANGE.top)
       }
-      if (o.position.y + e.movement.y > Constants.CANVAS_HEIGHT - 2 * Constants.GRID_SIZE) {
-        return new Vec(o.position.x, Constants.CANVAS_HEIGHT - 2 * Constants.GRID_SIZE)
+      if (newPos.y > Constants.MOVABLE_RANGE.bottom) {
+        return new Vec(o.position.x, Constants.MOVABLE_RANGE.bottom)
       }
-      return o.position.add(e.movement);
+
+      // if frog is going to the goal section but landing on a visited goal, don't move
+      if (newPos.y < Constants.MOVABLE_RANGE.top + Constants.GRID_SIZE && !unvisitedGoalsPositions.some(p => newPos.overlaps(p)(Constants.TOLERANCE))) {
+        return o.position
+      }
+
+      return newPos;
     },
+
 
 
     reduceState = (s: GameState, e: Move | Tick): GameState =>
@@ -272,7 +347,7 @@ function main() {
         ...s,
         frog: {
           ...s.frog,
-          position: checkBounds(s.frog, e)
+          position: checkBounds(s, s.frog, e)
         }
       }
         : tick(s, e.elapsed)
@@ -283,18 +358,36 @@ function main() {
     const
       canvas = document.getElementById("svgCanvas")!,
       updateObjectView = (o: Object) => {
-        function createObjectView() {
-          const v = document.createElementNS(canvas.namespaceURI, 'rect')!;
-          v.setAttribute('id', o.id);
-          v.setAttribute("width", o.size.x.toString());
-          v.setAttribute("height", o.size.y.toString());
-          v.classList.add(o.viewType);
-          canvas.appendChild(v);
-          return v;
+        const v = document.getElementById(o.id) || document.createElementNS(canvas.namespaceURI, 'rect')!;
+        v.setAttribute('id', o.id);
+        v.setAttribute('x', String(o.position.x));
+        v.setAttribute('y', String(o.position.y));
+
+        v.setAttribute("width", String(o.size.x));
+        v.setAttribute("height", String(o.size.y));
+        v.classList.add(o.viewType);
+
+        canvas.appendChild(v);
+      },
+
+      updateTextObjectView = (o: TextObject) => {
+        const v = document.getElementById(o.id) || document.createElementNS(canvas.namespaceURI, 'text')!;
+        v.setAttribute('id', o.id);
+        v.setAttribute('x', String(o.position.x));
+        v.setAttribute('y', String(o.position.y));
+
+        v.setAttribute('font-size', String(o.size));
+        v.setAttribute('fill', o.color);
+        v.classList.add('text');
+        v.textContent = o.text;
+        canvas.appendChild(v);
+      },
+
+      updateTargetObjectView = (o: TargetObject) => {
+        const v = document.getElementById(o.id);
+        if (v) {
+          v.classList.add(o.visited ? 'visited' : '')
         }
-        const v = document.getElementById(o.id) || createObjectView();
-        v.setAttribute('x', o.position.x.toString());
-        v.setAttribute('y', o.position.y.toString());
       }
 
     const score = document.getElementById("score")!;
@@ -307,24 +400,39 @@ function main() {
     s.logs.forEach(updateObjectView);
     s.flies.forEach(updateObjectView);
     s.goals.forEach(updateObjectView);
+    s.goals.filter(g => g.visited).forEach(updateTargetObjectView);
 
     updateObjectView(s.frog);
 
+
     s.exit.map(o => document.getElementById(o.id))
       .filter(isNotNullOrUndefined)
-      .forEach(v => {
-        try {
-          canvas.removeChild(v)
-        } catch (e) {
-          // rarely it can happen that a bullet can be in exit 
-          // for both expiring and colliding in the same tick,
-          // which will cause this exception
-          console.log("Already removed: " + v.id)
-        }
-      })
+      .forEach(v => canvas.removeChild(v))
+
+    if (s.goals.filter(g => g.visited).length === s.goals.length) {
+      s.texts.forEach(updateTextObjectView);
+      subscription.unsubscribe();
+    }
+
 
     if (s.gameOver) {
       subscription.unsubscribe();
+      s.texts.forEach(updateTextObjectView);
+
+      function mouseOnCanvas(x: number, y: number) {
+        return x > 0 && x < Constants.CANVAS_WIDTH && y > 0 && y < Constants.CANVAS_HEIGHT
+      }
+
+      const mouseClick = fromEvent<MouseEvent>(document, "mousedown").pipe(filter(({ x, y }) => mouseOnCanvas(x, y))).subscribe(retry);
+
+      function retry() {
+        mouseClick.unsubscribe();
+        canvas.removeChild(document.getElementById("game-over")!);
+        canvas.removeChild(document.getElementById("retry")!);
+        s.flies.forEach(f => canvas.removeChild(document.getElementById(f.id)!));
+        main();
+      }
+
     }
 
 
@@ -340,6 +448,7 @@ class Vec {
   sub = (b: Vec) => new Vec(this.x - b.x, this.y - b.y)
   len = () => Math.sqrt(this.x * this.x + this.y * this.y)
   mult = (s: number) => new Vec(this.x * s, this.y * s)
+  overlaps = (b: Vec) => (tolerance: number) => this.x - b.x >= -tolerance && this.x - b.x <= tolerance
   static Zero = new Vec();
 }
 

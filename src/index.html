@@ -3,8 +3,21 @@
 <head>
   <title>FIT2102 A1 2022</title>
   <style>
+    @font-face {
+      font-family: arcade;
+      src: url('./arcade.ttf');
+    }
+
+    .text {
+      font-family: 'arcade';
+    }
+
+    .visited {
+      fill: rgb(230, 166, 49) !important;
+    }
+
     .road {
-      fill: burlywood;
+      fill: rgb(150, 142, 132);
     }
 
     .water {
@@ -12,7 +25,7 @@
     }
 
     .grass {
-      fill: plum;
+      fill: rgb(136, 172, 66);
     }
 
     .frog {
@@ -20,11 +33,11 @@
     }
 
     .car {
-      fill: red;
+      fill: rgb(223, 93, 93);
     }
 
     .truck {
-      fill: purple
+      fill: rgb(153, 64, 153);
     }
 
     .log {
@@ -32,11 +45,15 @@
     }
 
     .goal {
-      fill: yellow;
+      fill: lightblue;
     }
 
     .fly {
-      fill: blue
+      fill: black;
+    }
+
+    .score {
+      font-size: 30px;
     }
   </style>
   <script src="../dist/main.js">
@@ -44,10 +61,10 @@
 </head>
 
 <body>
-  <svg id="svgCanvas" width="550" height="750" style="background-color: #555555">
+  <svg id="svgCanvas" width="550" height="750" style="background-color: #7696ca">
     <!--Game Score-->
-    <text x=35 y=35 fill="white" class="gameText">SCORE</text>
-    <text id="score" x=150 y=35 fill="lime" , class="gameNumber">0</text>
+    <text class="text score" x=35 y=35 fill="white">SCORE</text>
+    <text class="text score" id="score" x=150 y=35 fill="lime">0</text>
   </svg>
 </body>
 
