@@ -52,6 +52,10 @@
       fill: black;
     }
 
+    .snake {
+      fill: rgb(255, 22, 177)
+    }
+
     .score {
       font-size: 30px;
     }
@@ -63,8 +67,17 @@
 <body>
   <svg id="svgCanvas" width="550" height="750" style="background-color: #7696ca">
     <!--Game Score-->
-    <text class="text score" x=35 y=35 fill="white">SCORE</text>
+    <text class="text score" x=35 y=35 fill="white">score</text>
     <text class="text score" id="score" x=150 y=35 fill="lime">0</text>
+
+    <!-- Game Level -->
+    <text class="text score" x=380 y=35 fill="white">level</text>
+    <text class="text score" id="level" x=490 y=35 fill="lime">1</text>
+
+    <!-- Highest Game Score -->
+    <text class="text score" x=35 y=735 fill="white">highest</text>
+    <text class="text score" id="maxScore" x=180 y=735 fill="lime">0</text>
+
   </svg>
 </body>
 
