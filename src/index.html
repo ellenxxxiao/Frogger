@@ -5,7 +5,7 @@
   <style>
     @font-face {
       font-family: arcade;
-      src: url('./arcade.ttf');
+      src: url('../src/arcade.ttf');
     }
 
     .text {
@@ -59,6 +59,12 @@
     .score {
       font-size: 30px;
     }
+
+    .highlight {
+      font-weight: 900;
+      width: 20px;
+      background-color: lime;
+    }
   </style>
   <script src="../dist/main.js">
   </script>
@@ -79,6 +85,48 @@
     <text class="text score" id="maxScore" x=180 y=735 fill="lime">0</text>
 
   </svg>
+
+  <div id="controls" class="text">
+    <h2>Controls</h2>
+    <table>
+      <tr>
+        <td>Left</td>
+        <td>
+          <div id="ArrowLeft" class="key">&#8678;</div>
+        </td>
+      </tr>
+      <tr>
+        <td>Right</td>
+        <td>
+          <div id="ArrowRight" class="key">&#8680;</div>
+        </td>
+      </tr>
+      <tr>
+        <td>up</td>
+        <td>
+          <div id="ArrowUp" class="key">&#8679;</div>
+        </td>
+      </tr>
+      <tr>
+        <td>down</td>
+        <td>
+          <div id="ArrowDown" class="key">&#8681;</div>
+        </td>
+      </tr>
+      <tr>
+        <td>restart</td>
+        <td>
+          <div id="KeyR" class="key">[R]</div>
+        </td>
+      </tr>
+      <tr>
+        <td>lvl up</td>
+        <td>
+          <div id="KeyN" class="key">[N]</div>
+        </td>
+      </tr>
+    </table>
+  </div>
 </body>
 
 </html>

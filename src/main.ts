@@ -9,7 +9,7 @@ import { map, filter, scan } from "rxjs/operators";
 // Define type for key codes
 type Key = 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight' | 'KeyR' | 'KeyN';
 // Define the event we want to listen for
-type Event = 'keydown';
+type Event = 'keydown' | 'keyup';
 
 const frogger = () => {
 
@@ -350,8 +350,15 @@ const frogger = () => {
 
     // Frog is considered on object if more than half of it is on the object
     objectsOverlapped = (objA: Object, objB: Object) => {
-      const xOverlapped = objA.position.x + objA.size.x / 2 > objB.position.x && objA.position.x + objA.size.x / 2 <= objB.position.x + objB.size.x
-      const yOverlapped = objA.position.y + objA.size.y / 2 > objB.position.y && objA.position.y + objA.size.y <= objB.position.y + objB.size.y
+      const xOverlapped =
+        objA.position.x + objA.size.x / 2 > objB.position.x
+        &&
+        objA.position.x + objA.size.x / 2 <= objB.position.x + objB.size.x
+
+      const yOverlapped =
+        objA.position.y + objA.size.y / 2 > objB.position.y
+        &&
+        objA.position.y + objA.size.y <= objB.position.y + objB.size.y
       return xOverlapped && yOverlapped
     },
 
@@ -476,6 +483,7 @@ const frogger = () => {
      * Check the bounds for moving objects
      */
     checkBounds = (s: GameState, o: MovableObject, e: Move): Vec => {
+      // forbid any movements if the game is finished
       if (!s.gameOver && !s.gameWin) {
         const
           newPos = o.position.add(e.movement),
@@ -497,7 +505,10 @@ const frogger = () => {
         }
 
         // if frog is going to the goal section but landing on a visited goal, don't move
-        if (newPos.y < Constants.MOVABLE_RANGE.top + Constants.GRID_SIZE && !unvisitedGoalsPositions.some(p => newPos.overlaps(p)(Constants.TOLERANCE))) {
+        if (
+          newPos.y < Constants.MOVABLE_RANGE.top + Constants.GRID_SIZE
+          &&
+          !unvisitedGoalsPositions.some(p => newPos.overlaps(p)(Constants.TOLERANCE))) {
           return o.position
         }
 
@@ -514,7 +525,10 @@ const frogger = () => {
           : e instanceof Move ? { ...s, frog: { ...s.frog, position: checkBounds(s, s.frog, e) } }
             : tick(s, e.elapsed)
 
-  const subscription = merge(gameClock, nextLevel, restart, moveUp, moveRight, moveDown, moveLeft).pipe(scan(reduceState, createInitialState(1, 0, 0))).subscribe(updateView)
+  const subscription =
+    merge(gameClock, nextLevel, restart, moveUp, moveRight, moveDown, moveLeft)
+      .pipe(scan(reduceState, createInitialState(1, 0, 0)))
+      .subscribe(updateView)
 
   // Update the view based on the game state
   function updateView(s: GameState) {
@@ -655,10 +669,28 @@ function isNotNullOrUndefined<T extends Object>(input: null | undefined | T): in
   return input != null;
 }
 
+// modified FROM ASTEROIDS EXAMPLE
+function showKeys() {
+  function showKey(k: Key) {
+    const arrowKey = document.getElementById(k)!,
+      o = (e: Event) => fromEvent<KeyboardEvent>(document, e).pipe(
+        filter(({ code }) => code === k))
+    o('keydown').subscribe(e => arrowKey.classList.add("highlight"))
+    o('keyup').subscribe(_ => arrowKey.classList.remove("highlight"))
+  }
+  showKey('ArrowLeft');
+  showKey('ArrowRight');
+  showKey('ArrowUp');
+  showKey('ArrowDown');
+  showKey('KeyN')
+  showKey('KeyR')
+}
+
 
 // The following simply runs your main function on window load.  Make sure to leave it in place.
 if (typeof window !== "undefined") {
   window.onload = () => {
     frogger();
+    showKeys();
   };
 }
