@@ -1,23 +1,17 @@
-# FIT2102 Assignment 1
-
-All of your changes, code, and game files should be in the src folder.
+# Frogger Game
 
 ## Development
 
-There are two ways to run the code:
-
-1. Build the code and then open the web page
+To run the code, build the code and then open the web page:
 
 - Run `npm install`
 - Run `npm run build`
-- Open the html file dist/index.html (NOT src/index.html)
+- Open the html file `dist/index.html` (NOT src/index.html)
 
-2. Use the development server
+## Screenshots of game
 
-- Run `npm install`
-- Run `npm run dev`, this will automatically open a web page at localhost:4000
-- Open localhost:4000 in your browser if it didn't already
+> Gameplay at level 5
+![gameplay@lvl5](https://user-images.githubusercontent.com/48679943/210057913-c5b9d8ea-bafb-4c0a-9718-176e94c6b4f5.png)
 
-The development server will have some additional features that help with the
-development process, but are not essential.
-
+> Game Over
+![gameover](https://user-images.githubusercontent.com/48679943/210057907-b1d52207-084a-4246-9a02-cdb490b37aea.png)
